@@ -19,6 +19,11 @@
 class QPainter;
 
 namespace Ui::CustomEmoji {
+
+int &ShotScale() {
+	static auto result = 1;
+	return result;
+}
 namespace {
 
 constexpr auto kMaxFrames = 180;
@@ -405,7 +410,7 @@ PaintFrameResult Cache::paintCurrentFrame(
 		? (_frames - 1)
 		: std::min(_frame, _frames - 1);
 	const auto info = frame(index);
-	const auto size = _size / style::DevicePixelRatio();
+	const auto size = _size / (style::DevicePixelRatio() * ShotScale());
 	const auto rect = QRect(context.position, QSize(size, size));
 	PaintScaledImage(p, rect, info, context);
 	const auto next = first ? 0 : currentFrameFinishes();

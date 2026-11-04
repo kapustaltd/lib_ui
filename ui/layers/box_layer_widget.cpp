@@ -132,6 +132,18 @@ QRect BoxLayerWidget::loadingRect() const {
 void BoxLayerWidget::paintEvent(QPaintEvent *e) {
 	Painter p(this);
 
+	// Mokagram: окно может запросить своё скругление (свойство moka-radius).
+	if (const auto custom = std::max(property("moka-radius").toInt(), 28);
+		custom > 0) {
+		auto hq = PainterHighQualityEnabler(p);
+		p.setPen(Qt::NoPen);
+		p.setBrush(st().bg);
+		p.drawRoundedRect(rect(), custom, custom);
+		if (!_additionalTitle.current().isEmpty()) {
+			paintAdditionalTitle(p);
+		}
+		return;
+	}
 	const auto clip = e->rect();
 	const auto paintTopRounded = !(_customCornersFilling & RectPart::FullTop)
 		&& clip.intersects(QRect(0, 0, width(), st::boxRadius));

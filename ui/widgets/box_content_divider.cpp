@@ -23,10 +23,13 @@ BoxContentDivider::BoxContentDivider(
 : RpWidget(parent)
 , _st(st)
 , _parts(parts) {
+	setProperty("moka-break", true);
 	resize(width(), height);
 }
 
 void BoxContentDivider::paintEvent(QPaintEvent *e) {
+	// Mokagram: полос-разделителей нет, секции разделены зазорами.
+	return;
 	QPainter p(this);
 
 	p.fillRect(e->rect(), _st.bg);

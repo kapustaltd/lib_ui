@@ -232,6 +232,10 @@ void TimeInput::paintEvent(QPaintEvent *e) {
 	auto p = QPainter(this);
 
 	const auto &_st = _stDateField;
+	// Mokagram: у скруглённых полей части рисуют себя сами, без общей черты.
+	if (_st.borderRadius > 0 && (_st.border || _st.borderActive)) {
+		return;
+	}
 	const auto height = _st.heightMin;
 	if (_st.border) {
 		p.fillRect(0, height - _st.border, width(), _st.border, _st.borderFg);

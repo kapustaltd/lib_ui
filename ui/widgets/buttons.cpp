@@ -53,7 +53,7 @@ public:
 
 protected:
 	QImage prepareRippleMask() const override final {
-		return RippleAnimation::RoundRectMask(size(), st::buttonRadius);
+		return RippleAnimation::RoundRectMask(size(), std::max(st::buttonRadius, 16));
 	}
 
 };
@@ -303,8 +303,8 @@ RoundButton::RoundButton(
 : RippleButton(parent, st.ripple)
 , _textFull(std::move(text) | rpl::map(Text::WithEntities))
 , _st(st)
-, _roundRect(st.radius ? st.radius : st::buttonRadius, _st.textBg)
-, _roundRectOver(st.radius ? st.radius : st::buttonRadius, _st.textBgOver)
+, _roundRect(st.radius ? st.radius : std::max(st::buttonRadius, 16), _st.textBg)
+, _roundRectOver(st.radius ? st.radius : std::max(st::buttonRadius, 16), _st.textBgOver)
 , _fullRadius(st.fullRadius) {
 	_textFull.value(
 	) | rpl::on_next([=](const TextWithEntities &text) {
@@ -506,7 +506,7 @@ void RoundButton::paintEvent(QPaintEvent *e) {
 			PainterHighQualityEnabler hq(p);
 			p.setPen(_penOverride ? *_penOverride : Qt::NoPen);
 			p.setBrush(*_brushOverride);
-			const auto radius = _st.radius ? _st.radius : st::buttonRadius;
+			const auto radius = _st.radius ? _st.radius : std::max(st::buttonRadius, 16);
 			p.drawRoundedRect(fill, radius, radius);
 		} else {
 			rect.paint(p, fill);
@@ -606,7 +606,7 @@ QImage RoundButton::prepareRippleMask() const {
 	}
 	return RippleAnimation::RoundRectMask(
 		rounded.size(),
-		_st.radius ? _st.radius : st::buttonRadius);
+		_st.radius ? _st.radius : std::max(st::buttonRadius, 16));
 }
 
 QPoint RoundButton::prepareRippleStartPosition() const {
@@ -990,8 +990,22 @@ void SettingsButton::paintEvent(QPaintEvent *e) {
 	}
 }
 
+// Mokagram: подсветка строки и волна клика скруглены, как в карточках.
+QImage SettingsButton::prepareRippleMask() const {
+	return RippleAnimation::RoundRectMask(
+		size(),
+		std::min(height() / 2, 20));
+}
+
 void SettingsButton::paintBg(Painter &p, const QRect &rect, bool over) const {
-	p.fillRect(rect, over ? _st.textBgOver : _st.textBg);
+	// Mokagram: строка без своей заливки, фон даёт карточка или окно.
+	if (over) {
+		auto hq = PainterHighQualityEnabler(p);
+		p.setPen(Qt::NoPen);
+		p.setBrush(_st.textBgOver);
+		const auto radius = std::min(height() / 2, 20);
+		p.drawRoundedRect(QRectF(this->rect()), radius, radius);
+	}
 }
 
 void SettingsButton::paintText(Painter &p, bool over, int outerw) const {

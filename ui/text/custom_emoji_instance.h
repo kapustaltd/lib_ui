@@ -27,6 +27,9 @@ class FrameGenerator;
 
 namespace Ui::CustomEmoji {
 
+// Mokagram: на время снимка сообщений кадры эмодзи рисуются в N раз крупнее.
+[[nodiscard]] int &ShotScale();
+
 using Context = Ui::Text::CustomEmoji::Context;
 
 [[nodiscard]] QColor PreviewColorFromTextColor(QColor color);

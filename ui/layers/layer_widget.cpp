@@ -20,6 +20,7 @@
 #include "styles/palette.h"
 
 #include <QtGui/QtEvents>
+#include <QtGui/QPainterPath>
 
 namespace Ui {
 
@@ -299,15 +300,48 @@ void LayerStackWidget::BackgroundWidget::paintEvent(QPaintEvent *e) {
 		// (alpha_final - alpha_current) / (1 - alpha_current) so we won't get glitches
 		// in the transparent special layer cache corners after filling special layer
 		// rect above its cache with alpha_current opacity.
-		const auto region = QRegion(bg) - specialLayerBox;
+		// Mokagram: углы окна скруглены (32), там слой не рисует ничего,
+		// поэтому в углах затемнение должно быть обычным, а не ослабленным.
+		const auto core = QRegion(specialLayerBox.marginsRemoved(QMargins(32, 0, 32, 0)))
+			+ QRegion(specialLayerBox.marginsRemoved(QMargins(0, 32, 0, 32)));
+		const auto region = QRegion(bg) - core;
 		for (const auto &rect : region) {
 			p.fillRect(rect, st::layerBg);
 		}
 		p.setOpacity((bgOpacity - overSpecialOpacity) / (1. - (overSpecialOpacity * st::layerBg->c.alphaF())));
-		p.fillRect(specialLayerBox, st::layerBg);
+		for (const auto &rect : core) {
+			p.fillRect(rect, st::layerBg);
+		}
 		p.setOpacity(bgOpacity);
 	} else {
 		p.fillRect(bg, st::layerBg);
+	}
+
+	if (!specialLayerBox.isEmpty() && _specialLayerCache.isNull()) {
+		// Mokagram: в скруглённых углах окна нет тени, и они выглядят светлее
+		// окружения: подтемняем их под цвет тени вокруг.
+		auto hq = PainterHighQualityEnabler(p);
+		p.setOpacity(bgOpacity);
+		p.setPen(Qt::NoPen);
+		p.setBrush(QColor(0, 0, 0, 107));
+		const auto wedge = [&](int x, int y, int r, bool right, bool bottom) {
+			auto path = QPainterPath();
+			path.addRect(QRectF(x, y, r, r));
+			auto circle = QPainterPath();
+			circle.addEllipse(
+				QPointF(right ? x : x + r, bottom ? y : y + r),
+				r,
+				r);
+			p.drawPath(path.subtracted(circle));
+		};
+		const auto &b = specialLayerBox;
+		wedge(b.x(), b.y(), 32, false, false);
+		wedge(b.x() + b.width() - 32, b.y(), 32, true, false);
+		if (b.y() + b.height() < height()) {
+			wedge(b.x(), b.y() + b.height() - 20, 20, false, true);
+			wedge(b.x() + b.width() - 20, b.y() + b.height() - 20, 20, true, true);
+		}
+		p.setOpacity(1.);
 	}
 
 	if (!_specialLayerCache.isNull() && specialLayerOpacity > 0) {
