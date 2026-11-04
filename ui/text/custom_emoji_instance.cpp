@@ -19,6 +19,11 @@
 class QPainter;
 
 namespace Ui::CustomEmoji {
+
+int &ShotScale() {
+	static auto result = 1;
+	return result;
+}
 namespace {
 
 constexpr auto kMaxFrames = 180;
@@ -107,7 +112,8 @@ void Preview::paint(QPainter &p, const Context &context) {
 		paintPath(p, context, *path);
 	} else if (const auto image = std::get_if<Image>(&_data)) {
 		const auto &data = image->data;
-		const auto factor = style::DevicePixelRatio();
+		// Mokagram: в снимке сообщений превью крупнее в ShotScale раз.
+		const auto factor = style::DevicePixelRatio() * ShotScale();
 		const auto rect = QRect(context.position, data.size() / factor);
 		PaintScaledImage(p, rect, { .image = &data }, context);
 	}
@@ -138,7 +144,7 @@ void Preview::paintPath(
 	auto hq = PainterHighQualityEnabler(p);
 	p.setBrush(PreviewColorFromTextColor(context.textColor));
 	p.setPen(Qt::NoPen);
-	const auto scale = path.scale;
+	const auto scale = path.scale / ShotScale();
 	const auto required = (scale != 1.) || context.scaled;
 	if (required) {
 		p.save();
@@ -405,7 +411,7 @@ PaintFrameResult Cache::paintCurrentFrame(
 		? (_frames - 1)
 		: std::min(_frame, _frames - 1);
 	const auto info = frame(index);
-	const auto size = _size / style::DevicePixelRatio();
+	const auto size = _size / (style::DevicePixelRatio() * ShotScale());
 	const auto rect = QRect(context.position, QSize(size, size));
 	PaintScaledImage(p, rect, info, context);
 	const auto next = first ? 0 : currentFrameFinishes();

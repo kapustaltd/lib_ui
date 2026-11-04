@@ -167,7 +167,14 @@ void SideBarButton::paintEvent(QPaintEvent *e) {
 	const auto clip = e->rect();
 
 	const auto &bg = _active ? _st.textBgActive : _st.textBg;
-	p.fillRect(clip, bg);
+	// Mokagram: вкладка-пилюля вместо прямоугольника.
+	p.fillRect(clip, _st.textBg);
+	if (_active) {
+		auto hq = PainterHighQualityEnabler(p);
+		p.setPen(Qt::NoPen);
+		p.setBrush(_st.textBgActive);
+		p.drawRoundedRect(rect().marginsRemoved({ 4, 2, 4, 2 }), 16, 16);
+	}
 
 	RippleButton::paintRipple(p, 0, 0);
 

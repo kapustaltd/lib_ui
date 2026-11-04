@@ -7,6 +7,7 @@
 #pragma once
 
 #include "base/qt_connection.h"
+#include <QtGui/QPainter>
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/menu/menu.h"
 #include "ui/widgets/menu/menu_common.h"
@@ -89,5 +90,27 @@ private:
 	Menu *_menu = nullptr;
 
 };
+
+inline void PaintItemBackground(
+		QPainter &p,
+		const QRect &rect,
+		const style::Menu &st,
+		bool selected) {
+	if (!selected) {
+		return;
+	}
+	const auto sx = style::ConvertScale(8);
+	const auto sy = style::ConvertScale(2);
+	const auto inner = rect.marginsRemoved({ sx, sy, sx, sy });
+	const auto radius = std::min<double>(
+		inner.height() / 2.,
+		style::ConvertScale(16));
+	p.save();
+	p.setRenderHint(QPainter::Antialiasing);
+	p.setPen(Qt::NoPen);
+	p.setBrush(st.itemBgOver);
+	p.drawRoundedRect(inner, radius, radius);
+	p.restore();
+}
 
 } // namespace Ui::Menu

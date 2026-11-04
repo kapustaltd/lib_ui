@@ -1925,6 +1925,15 @@ InputField::InputField(
 		}
 	}
 
+	// Mokagram: у скруглённого поля текст не липнет к краю.
+	if (_st.borderRadius > 0 && (_st.border || _st.borderActive)) {
+		_additionalMargins = QMargins(
+			std::max(0, std::min(14, _st.borderRadius) - _st.textMargins.left()),
+			0,
+			std::max(0, std::min(10, _st.borderRadius) - _st.textMargins.right()),
+			0);
+	}
+
 	if (_st.textBg->c.alphaF() >= 1. && !_st.borderRadius) {
 		setAttribute(Qt::WA_OpaquePaintEvent);
 	}
@@ -2868,7 +2877,7 @@ void InputField::paintSurrounding(
 		QRect clip,
 		float64 errorDegree,
 		float64 focusedDegree) {
-	if (_st.borderRadius > 0) {
+	if (_st.borderRadius > 0 && (_st.border || _st.borderActive)) {
 		paintRoundSurrounding(p, clip, errorDegree, focusedDegree);
 	} else {
 		paintFlatSurrounding(p, clip, errorDegree, focusedDegree);
@@ -2882,10 +2891,14 @@ void InputField::paintRoundSurrounding(
 		float64 focusedDegree) {
 	const auto divide = _st.borderDenominator ? _st.borderDenominator : 1;
 	const auto border = _st.border / float64(divide);
-	const auto borderHalf = border / 2.;
+	const auto borderHalf = std::max(border, 1.5) / 2.;
 	auto pen = anim::pen(_st.borderFg, _st.borderFgActive, focusedDegree);
-	pen.setWidthF(border);
-	p.setPen(pen);
+	// Mokagram: без рамки в покое, при фокусе тонкое акцентное кольцо.
+	const auto lineWidth = (border > 0.)
+		? border
+		: (_st.borderActive ? (1.5 * focusedDegree) : 0.);
+	pen.setWidthF(lineWidth);
+	p.setPen((lineWidth > 0.) ? pen : QPen(Qt::NoPen));
 	p.setBrush(anim::brush(_st.textBg, _st.textBgActive, focusedDegree));
 
 	PainterHighQualityEnabler hq(p);

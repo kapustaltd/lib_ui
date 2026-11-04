@@ -448,13 +448,11 @@ object_ptr<RpWidget> BoxContent::doTakeInnerWidget() {
 }
 
 void BoxContent::paintEvent(QPaintEvent *e) {
-	Painter p(this);
-
+	// Mokagram: фон и скругления рисует слой окна, поэтому содержимое
+	// не должно быть непрозрачным, иначе углы получаются квадратными.
 	if (testAttribute(Qt::WA_OpaquePaintEvent)) {
-		const auto &color = getDelegate()->style().bg;
-		for (const auto &rect : e->region()) {
-			p.fillRect(rect, color);
-		}
+		setAttribute(Qt::WA_OpaquePaintEvent, false);
+		update();
 	}
 }
 

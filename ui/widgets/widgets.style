@@ -992,7 +992,7 @@ defaultPopupMenu: PopupMenu {
 
 	menu: defaultMenu;
 
-	radius: 8px;
+	radius: 26px;
 	duration: 150;
 	showDuration: 200;
 }
@@ -1030,7 +1030,7 @@ defaultInputField: InputField {
 	textBgActive: windowBg;
 	textFg: windowFg;
 	textMarkBg: windowBgOver;
-	textMargins: margins(0px, 28px, 0px, 4px);
+	textMargins: margins(16px, 28px, 16px, 4px);
 	textAlign: align(topleft);
 
 	placeholderFg: windowSubTextFg;
@@ -1047,9 +1047,9 @@ defaultInputField: InputField {
 	borderFgActive: activeLineFg;
 	borderFgError: activeLineFgError;
 
-	border: 1px;
+	border: 0px;
 	borderActive: 2px;
-	borderRadius: 0px;
+	borderRadius: 16px;
 	borderDenominator: 1;
 
 	style: boxTextStyle;
@@ -1252,7 +1252,7 @@ defaultPeerListCheckbox: RoundImageCheckbox {
 	check: defaultPeerListCheck;
 }
 
-innerDropdownRadius: 8px;
+innerDropdownRadius: 26px;
 defaultInnerDropdown: InnerDropdown {
 	padding: margins(10px, 10px, 10px, 10px);
 	shadow: roundShadowRadius8px;
@@ -1266,11 +1266,14 @@ defaultInnerDropdown: InnerDropdown {
 	bg: menuBg;
 	scroll: defaultSolidScroll;
 }
+defaultDropdownMenuInner: Menu(defaultMenu) {
+	itemBg: transparent;
+}
 defaultDropdownMenu: DropdownMenu {
 	wrap: InnerDropdown(defaultInnerDropdown) {
 		scrollPadding: margins(0px, 10px, 0px, 10px);
 	}
-	menu: defaultMenu;
+	menu: defaultDropdownMenuInner;
 }
 
 defaultTooltip: Tooltip {
@@ -1710,11 +1713,14 @@ popupMenuWithIcons: PopupMenu(defaultPopupMenu) {
 	scrollPadding: margins(0px, 5px, 0px, 5px);
 	menu: menuWithIcons;
 }
+dropdownMenuWithIconsInner: Menu(menuWithIcons) {
+	itemBg: transparent;
+}
 dropdownMenuWithIcons: DropdownMenu(defaultDropdownMenu) {
 	wrap: InnerDropdown(defaultInnerDropdown) {
 		scrollPadding: margins(0px, 6px, 0px, 6px);
 	}
-	menu: menuWithIcons;
+	menu: dropdownMenuWithIconsInner;
 }
 
 universalRippleAnimation: RippleAnimation(defaultRippleAnimation) {

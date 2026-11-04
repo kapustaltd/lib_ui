@@ -6,7 +6,6 @@
 //
 #include "ui/layers/layer_widget.h"
 
-#include "ui/cached_special_layer_shadow_corners.h"
 #include "ui/layers/box_layer_widget.h"
 #include "ui/widgets/shadow.h"
 #include "ui/image/image_prepare.h"
@@ -22,6 +21,52 @@
 #include <QtGui/QtEvents>
 
 namespace Ui {
+namespace {
+
+void PaintSpecialLayerShadow(QPainter &p, const QRect &box) {
+	static const auto topShadow = BoxShadow(st::defaultBoxShadow);
+	static const auto bottomShadow = BoxShadow(st::defaultBoxShadow);
+	const auto outer = box.marginsAdded(topShadow.extend());
+	const auto middle = box.y() + box.height() / 2;
+	p.save();
+	p.setClipRect(
+		QRect(outer.x(), outer.y(), outer.width(), middle - outer.y()),
+		Qt::IntersectClip);
+	topShadow.paint(p, box, 32);
+	p.restore();
+	p.save();
+	p.setClipRect(
+		QRect(outer.x(), middle, outer.width(), outer.bottom() - middle + 1),
+		Qt::IntersectClip);
+	bottomShadow.paint(p, box, 20);
+	p.restore();
+}
+
+QPixmap GrabSpecialLayerShadow(
+		not_null<RpWidget*> target,
+		RectParts sides) {
+	const auto &shadow = st::boxRoundShadow;
+	const auto extend = QMargins(
+		(sides & RectPart::Left) ? shadow.extend.left() : 0,
+		(sides & RectPart::Top) ? shadow.extend.top() : 0,
+		(sides & RectPart::Right) ? shadow.extend.right() : 0,
+		(sides & RectPart::Bottom) ? shadow.extend.bottom() : 0);
+	const auto box = target->rect().translated(
+		extend.left(),
+		extend.top());
+	const auto size = target->rect().marginsAdded(extend).size();
+	auto result = QPixmap(size * style::DevicePixelRatio());
+	result.setDevicePixelRatio(style::DevicePixelRatio());
+	result.fill(Qt::transparent);
+	{
+		auto p = QPainter(&result);
+		PaintSpecialLayerShadow(p, box);
+		RenderWidget(p, target, box.topLeft());
+	}
+	return result;
+}
+
+} // namespace
 
 class LayerStackWidget::BackgroundWidget : public RpWidget {
 public:
@@ -275,22 +320,7 @@ void LayerStackWidget::BackgroundWidget::paintEvent(QPaintEvent *e) {
 	if (_specialLayerCache.isNull() && !specialLayerBox.isEmpty()) {
 		// All cache images are taken together with their shadows,
 		// so we paint shadow only when there is no cache.
-		auto sides = RectPart::Left | RectPart::Right;
-		auto topCorners = (specialLayerBox.y() > 0);
-		auto bottomCorners = (specialLayerBox.y() + specialLayerBox.height() < height());
-		if (topCorners) {
-			sides |= RectPart::Top;
-		}
-		if (bottomCorners) {
-			sides |= RectPart::Bottom;
-		}
-		if (topCorners || bottomCorners) {
-			p.setClipRegion(QRegion(rect()) - specialLayerBox.marginsRemoved(QMargins(st::boxRadius, 0, st::boxRadius, 0)) - specialLayerBox.marginsRemoved(QMargins(0, st::boxRadius, 0, st::boxRadius)));
-		}
-		Ui::Shadow::paint(p, specialLayerBox, width(), st::boxRoundShadow, Ui::SpecialLayerShadowCorners(), sides);
-		if (topCorners || bottomCorners) {
-			p.setClipping(false);
-		}
+		PaintSpecialLayerShadow(p, specialLayerBox);
 	}
 
 	if (!layerBox.isEmpty() && !_specialLayerCache.isNull() && overSpecialOpacity < bgOpacity) {
@@ -299,12 +329,18 @@ void LayerStackWidget::BackgroundWidget::paintEvent(QPaintEvent *e) {
 		// (alpha_final - alpha_current) / (1 - alpha_current) so we won't get glitches
 		// in the transparent special layer cache corners after filling special layer
 		// rect above its cache with alpha_current opacity.
-		const auto region = QRegion(bg) - specialLayerBox;
+		// Mokagram: углы окна скруглены (32), там слой не рисует ничего,
+		// поэтому в углах затемнение должно быть обычным, а не ослабленным.
+		const auto core = QRegion(specialLayerBox.marginsRemoved(QMargins(32, 0, 32, 0)))
+			+ QRegion(specialLayerBox.marginsRemoved(QMargins(0, 32, 0, 32)));
+		const auto region = QRegion(bg) - core;
 		for (const auto &rect : region) {
 			p.fillRect(rect, st::layerBg);
 		}
 		p.setOpacity((bgOpacity - overSpecialOpacity) / (1. - (overSpecialOpacity * st::layerBg->c.alphaF())));
-		p.fillRect(specialLayerBox, st::layerBg);
+		for (const auto &rect : core) {
+			p.fillRect(rect, st::layerBg);
+		}
 		p.setOpacity(bgOpacity);
 	} else {
 		p.fillRect(bg, st::layerBg);
@@ -557,7 +593,7 @@ void LayerStackWidget::setCacheImages() {
 		if (_specialLayer->y() + _specialLayer->height() < height()) {
 			sides |= RectPart::Bottom;
 		}
-		specialLayerCache = Ui::Shadow::grab(_specialLayer, st::boxRoundShadow, sides);
+		specialLayerCache = GrabSpecialLayerShadow(_specialLayer, sides);
 	}
 	auto layerCache = QPixmap();
 	if (auto layer = currentLayer()) {

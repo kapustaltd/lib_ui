@@ -141,6 +141,14 @@ int MaskedInputField::borderAnimationStart() const {
 
 void MaskedInputField::setTextMargins(const QMargins &mrg) {
 	_textMargins = mrg;
+	// Mokagram: у скруглённого поля текст не липнет к краю.
+	if (_st.borderRadius > 0 && (_st.border || _st.borderActive)) {
+		_textMargins += QMargins(
+			std::max(0, std::min(14, _st.borderRadius) - mrg.left()),
+			0,
+			std::max(0, std::min(10, _st.borderRadius) - mrg.right()),
+			0);
+	}
 	setContentsMargins(_textMargins + QMargins(-2, -1, -2, -1));
 	refreshPlaceholder(_placeholderFull.current());
 }
@@ -149,12 +157,29 @@ void MaskedInputField::paintEvent(QPaintEvent *e) {
 	auto p = QPainter(this);
 
 	auto r = rect().intersected(e->rect());
+	auto errorDegree = _a_error.value(_error ? 1. : 0.);
+	auto focusedDegree = _a_focused.value(_focused ? 1. : 0.);
+	if (_st.borderRadius > 0 && (_st.border || _st.borderActive)) {
+		const auto focused = focusedDegree;
+		auto hq = PainterHighQualityEnabler(p);
+		auto pen = anim::pen(_st.borderFg, _st.borderFgActive, focused);
+		const auto lineWidth = _st.border ? _st.border : (1.5 * focused);
+		pen.setWidthF(lineWidth);
+		p.setPen((lineWidth > 0.) ? pen : QPen(Qt::NoPen));
+		p.setBrush(anim::brush(_st.textBg, _st.textBgActive, focused));
+		const auto half = std::max<float64>(lineWidth, 1.5) / 2.;
+		p.drawRoundedRect(
+			QRectF(0, 0, width(), height()).marginsRemoved(
+				QMarginsF(half, half, half, half)),
+			_st.borderRadius - half,
+			_st.borderRadius - half);
+		p.setPen(Qt::NoPen);
+		p.setBrush(Qt::NoBrush);
+	} else {
 	p.fillRect(r, _st.textBg);
 	if (_st.border) {
 		p.fillRect(0, height() - _st.border, width(), _st.border, _st.borderFg->b);
 	}
-	auto errorDegree = _a_error.value(_error ? 1. : 0.);
-	auto focusedDegree = _a_focused.value(_focused ? 1. : 0.);
 	auto borderShownDegree = _a_borderShown.value(1.);
 	auto borderOpacity = _a_borderOpacity.value(_borderVisible ? 1. : 0.);
 	if (_st.borderActive && (borderOpacity > 0.)) {
@@ -171,6 +196,8 @@ void MaskedInputField::paintEvent(QPaintEvent *e) {
 			p.fillRect(borderFrom, height() - _st.borderActive, borderTo - borderFrom, _st.borderActive, borderFg);
 			p.setOpacity(1);
 		}
+	}
+
 	}
 
 	p.setClipRect(r);

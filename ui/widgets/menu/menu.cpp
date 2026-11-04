@@ -5,6 +5,7 @@
 // https://github.com/desktop-app/legal/blob/master/LEGAL
 //
 #include "ui/widgets/menu/menu.h"
+#include "ui/widgets/popup_menu.h"
 
 #include "ui/widgets/menu/menu_action.h"
 #include "ui/widgets/menu/menu_item_base.h"
@@ -48,13 +49,17 @@ void Menu::init() {
 
 	setMouseTracking(true);
 
-	if (_st.itemBg->c.alpha() == 255) {
-		setAttribute(Qt::WA_OpaquePaintEvent);
-	}
-
+	// Mokagram: углы скругляет слой поверх меню (PopupMenu::_roundingOverlay),
+	// поэтому квадратная заливка тут нужна: без неё меню прозрачное.
 	paintRequest(
 	) | rpl::on_next([=](const QRect &clip) {
-		QPainter(this).fillRect(clip, _st.itemBg);
+		// Остальные контейнеры (выпадающие окна и т.п.) красят и скругляют фон сами.
+		for (auto w = parentWidget(); w; w = w->parentWidget()) {
+			if (dynamic_cast<PopupMenu*>(w)) {
+				QPainter(this).fillRect(clip, _st.itemBg);
+				break;
+			}
+		}
 	}, lifetime());
 
 	positionValue(

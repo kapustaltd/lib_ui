@@ -84,11 +84,59 @@ void ToggleView::setStyle(const style::Toggle &st) {
 }
 
 void ToggleView::paint(QPainter &p, int left, int top, int outerWidth) {
+	const auto outerLeft = left;
+	const auto outerTop = top;
 	left += _st->border;
 	top += _st->border;
 
 	PainterHighQualityEnabler hq(p);
 	auto toggled = currentAnimationValue();
+	if (_st->xsize <= 0) {
+		// Mokagram: переключатель в стиле Material 3.
+		const auto width = 2 * _st->border + _st->diameter + _st->width;
+		const auto height = 2 * _st->border + _st->diameter;
+		const auto track = style::rtlrect(
+			outerLeft,
+			outerTop,
+			width,
+			height,
+			outerWidth);
+		const auto off = _st->untoggledFg->c;
+		const auto on = _st->toggledFg->c;
+		const auto radius = height / 2.;
+		const auto outline = 2. * (1. - toggled);
+		p.setBrush(anim::color(QColor(0, 0, 0, 0), on, toggled));
+		p.setPen(outline > 0.05
+			? QPen(anim::color(off, on, toggled), outline)
+			: QPen(Qt::NoPen));
+		p.drawRoundedRect(
+			QRectF(track).adjusted(1, 1, -1, -1),
+			radius - 1,
+			radius - 1);
+		const auto thumb = height * (0.25 + 0.125 * toggled);
+		const auto fromX = radius;
+		const auto toX = width - radius;
+		const auto centerX = fromX + (toX - fromX) * toggled;
+		const auto center = style::rtlpoint(
+			QPointF(outerLeft + centerX, outerTop + radius),
+			outerWidth);
+		p.setPen(Qt::NoPen);
+		p.setBrush(anim::color(off, QColor(255, 255, 255), toggled));
+		p.drawEllipse(center, thumb, thumb);
+		if (_locked) {
+			const auto toggleLeft = left + anim::interpolate(
+				0,
+				_st->diameter + _st->width - _st->diameter,
+				toggled);
+			_st->lockIcon.paint(
+				p,
+				toggleLeft,
+				top,
+				outerWidth,
+				toggled > 0.5 ? on : off);
+		}
+		return;
+	}
 	auto fullWidth = _st->diameter + _st->width;
 	auto innerDiameter = _st->diameter - 2 * _st->shift;
 	auto innerRadius = float64(innerDiameter) / 2.;

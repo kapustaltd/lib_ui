@@ -309,6 +309,23 @@ void PanelAnimation::setAlphaDuration() {
 void PanelAnimation::start() {
 	Assert(!_finalImage.isNull());
 	RoundShadowAnimation::start(_finalWidth, _finalHeight, _finalImage.devicePixelRatio());
+	const auto clampStart = [this](const Corner &corner) {
+		if (!corner.valid()) return;
+		if (_startWidth >= 0) {
+			_startWidth = std::min(
+				std::max(_startWidth, corner.width),
+				_finalInnerWidth);
+		}
+		if (_startHeight >= 0) {
+			_startHeight = std::min(
+				std::max(_startHeight, corner.height),
+				_finalInnerHeight);
+		}
+	};
+	clampStart(_topLeft);
+	clampStart(_topRight);
+	clampStart(_bottomLeft);
+	clampStart(_bottomRight);
 	auto checkCorner = [this](const Corner &corner) {
 		if (!corner.valid()) return;
 		if (_startWidth >= 0) Assert(corner.width <= _startWidth);

@@ -5,6 +5,7 @@
 // https://github.com/desktop-app/legal/blob/master/LEGAL
 //
 #include "ui/text/text_renderer.h"
+#include "ui/text/text_emoji_budget.h"
 
 #include "ui/text/text_block.h"
 #include "ui/text/text_extended_data.h"
@@ -15,6 +16,50 @@
 #include <QtGui/QPaintEngine>
 
 namespace Ui::Text {
+namespace {
+
+int CustomEmojiLimit = 0;
+crl::time CustomEmojiWindow = 0;
+int CustomEmojiUsed = 0;
+int StickerLimit = 0;
+crl::time StickerWindow = 0;
+int StickerUsed = 0;
+
+} // namespace
+
+void SetCustomEmojiBudget(int limit) {
+	CustomEmojiLimit = std::max(limit, 0);
+}
+
+bool TakeCustomEmojiBudget() {
+	if (!CustomEmojiLimit) {
+		return true;
+	}
+	// Один кадр отрисовки: все эмодзи, нарисованные в пределах ~12 мс.
+	const auto now = crl::now();
+	if (now - CustomEmojiWindow > 12 || now < CustomEmojiWindow) {
+		CustomEmojiWindow = now;
+		CustomEmojiUsed = 0;
+	}
+	return ++CustomEmojiUsed <= CustomEmojiLimit;
+}
+
+void SetStickerBudget(int limit) {
+	StickerLimit = std::max(limit, 0);
+}
+
+bool TakeStickerBudget() {
+	if (!StickerLimit) {
+		return true;
+	}
+	const auto now = crl::now();
+	if (now - StickerWindow > 12 || now < StickerWindow) {
+		StickerWindow = now;
+		StickerUsed = 0;
+	}
+	return ++StickerUsed <= StickerLimit;
+}
+
 namespace {
 
 constexpr auto kQuoteHeaderTextLarge = 25;
@@ -1206,6 +1251,9 @@ bool Renderer::drawLine(uint16 lineEnd, Blocks::const_iterator blocksEnd) {
 								: QPoint(
 									ex + _customEmojiSkip,
 									ey + _customEmojiSkip);
+							// Mokagram: сверх бюджета эмодзи не анимируется, а стоит на кадре.
+							_customEmojiContext->paused = _pausedEmoji
+								|| !TakeCustomEmojiBudget();
 							custom->paint(*_p, *_customEmojiContext);
 						}
 						if (showFallbackText) {
